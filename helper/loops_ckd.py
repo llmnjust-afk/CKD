@@ -54,7 +54,7 @@ def train_ckd(epoch, train_loader, module_list, criterion, optimizer, opt):
             _, logit_f = fusion(feat_t, feat_s)
             loss, info = criterion(logit_t, logit_s, logit_f, target)
         elif opt.method == 'kd':
-            loss, info = criterion(logit_s, logit_t)
+            loss, info = criterion(logit_s, logit_t), {}
         elif opt.method == 'exp1':
             loss, info = criterion(feat_t, feat_s, logit_s, target)
         elif opt.method == 'exp2':
