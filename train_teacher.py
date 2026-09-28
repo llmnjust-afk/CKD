@@ -11,6 +11,7 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import DataLoader, Subset
 
 from models import model_dict
 from dataset.cifar100 import get_cifar100_dataloaders
@@ -78,6 +79,16 @@ def main():
         n_cls = 10
     else:
         raise NotImplementedError(opt.dataset)
+
+    if opt.subset < 1.0:
+        rng = np.random.RandomState(42)
+        ds = train_loader.dataset
+        n = len(ds)
+        idx = rng.choice(n, int(n * opt.subset), replace=False)
+        train_loader = DataLoader(Subset(ds, idx.tolist()),
+                                  batch_size=opt.batch_size,
+                                  shuffle=True,
+                                  num_workers=opt.num_workers)
 
     model = model_dict[opt.model](num_classes=n_cls)
     model = model.cuda() if torch.cuda.is_available() else model

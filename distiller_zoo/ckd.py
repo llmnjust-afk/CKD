@@ -83,6 +83,8 @@ class Exp1Loss(nn.Module):
         self.literal = getattr(opt, 'exp1_literal', False)
 
     def forward(self, feat_t, feat_s, logit_s, target):
+        if feat_t.shape != feat_s.shape:
+            raise ValueError('Exp1 requires equal teacher/student feature dims')
         if self.literal:
             f_a = feat_t + feat_s
             reg = (feat_s - f_a).norm(2)
