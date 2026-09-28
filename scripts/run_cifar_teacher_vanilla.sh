@@ -4,14 +4,14 @@
 # pass `--learning_rate 0.05` if you want to match that recipe exactly.
 
 # CIFAR-100 teachers (Table IX)
-python train_teacher.py --model wrn_40_2   --dataset cifar100 --trial 1
-python train_teacher.py --model resnet56   --dataset cifar100 --trial 1
-python train_teacher.py --model resnet110  --dataset cifar100 --trial 1
-python train_teacher.py --model resnet32x4 --dataset cifar100 --trial 1
-python train_teacher.py --model vgg13      --dataset cifar100 --trial 1
-python train_teacher.py --model vgg11      --dataset cifar100 --trial 1   # Table IV teacher (79.06)
-python train_teacher.py --model resnet32   --dataset cifar100 --trial 1   # Table IV teacher (71.37)
+PYTHON=${PYTHON:-python3} train_teacher.py --model wrn_40_2   --dataset cifar100 --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model resnet56   --dataset cifar100 --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model resnet110  --dataset cifar100 --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model resnet32x4 --dataset cifar100 --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model vgg13      --dataset cifar100 --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model vgg11      --dataset cifar100 --trial 1   # Table IV teacher (79.06)
+PYTHON=${PYTHON:-python3} train_teacher.py --model resnet32   --dataset cifar100 --trial 1   # Table IV teacher (71.37)
 
 # CIFAR-10 teachers (Table III/IV)
-python train_teacher.py --model wrn_40_2   --dataset cifar10  --trial 1
-python train_teacher.py --model vgg13      --dataset cifar10  --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model wrn_40_2   --dataset cifar10  --trial 1
+PYTHON=${PYTHON:-python3} train_teacher.py --model vgg13      --dataset cifar10  --trial 1

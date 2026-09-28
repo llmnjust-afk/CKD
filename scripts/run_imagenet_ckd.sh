@@ -6,5 +6,5 @@
 # Point --data_root at the ImageNet root (must contain imagenet/train and
 # imagenet/val; adjust dataset/imagenet.py get_data_folder if needed).
 
-python train_student.py --dataset imagenet \
+PYTHON=${PYTHON:-python3} train_student.py --dataset imagenet \
     --model_t imagenet_resnet34 --model_s imagenet_resnet18 --method ckd --trial 1

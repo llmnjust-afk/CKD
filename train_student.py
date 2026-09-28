@@ -20,6 +20,7 @@ from models import model_dict
 from dataset.cifar100 import CIFAR100Instance
 from dataset.cifar10 import CIFAR10Instance
 from dataset.imagenet import ImageFolderInstance, get_test_loader
+from torchvision import datasets as tv_datasets
 from fuse import FeatureFusionModule
 from helper.loops import validate
 from helper.loops_ckd import train_ckd
@@ -113,7 +114,7 @@ def load_teacher(model_path, n_cls, model_name=None):
     if name not in model_dict:
         raise ValueError('unknown teacher model: %s' % name)
     model_t = model_dict[name](num_classes=n_cls)
-    ckpt = torch.load(model_path, map_location='cpu')
+    ckpt = torch.load(model_path, map_location='cpu', weights_only=False)
     state = ckpt['model'] if isinstance(ckpt, dict) and 'model' in ckpt else ckpt
     model_t.load_state_dict(state)
     print('=> done')
@@ -148,7 +149,8 @@ def build_dataloaders(opt):
         ])
         train_set = base_set(root=opt.data_root, download=True, train=True,
                              transform=train_transform)
-        test_set = base_set(root=opt.data_root, download=True, train=False,
+        test_cls = tv_datasets.CIFAR100 if opt.dataset == 'cifar100' else tv_datasets.CIFAR10
+        test_set = test_cls(root=opt.data_root, download=True, train=False,
                             transform=test_transform)
         if opt.subset < 1.0:
             rng = np.random.RandomState(42)
