@@ -91,14 +91,20 @@ def main():
                                   num_workers=opt.num_workers)
 
     model = model_dict[opt.model](num_classes=n_cls)
-    model = model.cuda() if torch.cuda.is_available() else model
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    model = model.to(device)
 
     optimizer = optim.SGD(model.parameters(),
                           lr=opt.learning_rate,
                           momentum=opt.momentum,
                           weight_decay=opt.weight_decay)
 
-    criterion = nn.CrossEntropyLoss().cuda() if torch.cuda.is_available() else nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss().to(device)
 
     with open(os.path.join(opt.save_folder, 'config.json'), 'w') as f:
         json.dump(vars(opt), f, indent=2)

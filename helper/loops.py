@@ -10,6 +10,7 @@ from .util import AverageMeter, accuracy
 def train_vanilla(epoch, train_loader, model, criterion, optimizer, opt):
     """vanilla training"""
     model.train()
+    device = next(model.parameters()).device
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -21,10 +22,8 @@ def train_vanilla(epoch, train_loader, model, criterion, optimizer, opt):
     for idx, (input, target) in enumerate(train_loader):
         data_time.update(time.time() - end)
 
-        input = input.float()
-        if torch.cuda.is_available():
-            input = input.cuda()
-            target = target.cuda()
+        input = input.float().to(device)
+        target = target.to(device)
 
         # ===================forward=====================
         output = model(input)
@@ -72,6 +71,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
         module.train()
     # set teacher as eval()
     module_list[-1].eval()
+    device = next(module_list.parameters()).device
 
     if opt.distill == 'abound':
         module_list[1].eval()
@@ -99,13 +99,11 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
             input, target, index = data
         data_time.update(time.time() - end)
 
-        input = input.float()
-        if torch.cuda.is_available():
-            input = input.cuda()
-            target = target.cuda()
-            index = index.cuda()
-            if opt.distill in ['crd']:
-                contrast_idx = contrast_idx.cuda()
+        input = input.float().to(device)
+        target = target.to(device)
+        index = index.to(device)
+        if opt.distill in ['crd']:
+            contrast_idx = contrast_idx.to(device)
 
         # ===================forward=====================
         preact = False
@@ -224,15 +222,14 @@ def validate(val_loader, model, criterion, opt):
 
     # switch to evaluate mode
     model.eval()
+    device = next(model.parameters()).device
 
     with torch.no_grad():
         end = time.time()
         for idx, (input, target) in enumerate(val_loader):
 
-            input = input.float()
-            if torch.cuda.is_available():
-                input = input.cuda()
-                target = target.cuda()
+            input = input.float().to(device)
+            target = target.to(device)
 
             # compute output
             output = model(input)

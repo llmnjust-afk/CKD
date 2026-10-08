@@ -143,6 +143,39 @@ ImageNet top-1/top-5 (%) — Table X (ResNet34 → ResNet18): baseline
 The average CIFAR-100 gain reported in the abstract is +3.42% over the
 baseline and +1.71% over classic KD; ImageNet top-1 +2.04%.
 
+## Reproduction audit & troubleshooting
+
+Findings from a line-by-line audit against the paper full text plus local
+verification runs:
+
+1. **Everything the paper specifies is implemented as specified**: the loss
+   decomposition of Eqs. 6-8 (KL directions, CE at `tau = 1`), penultimate
+   feature splicing, the fusion module's own classifier, a single optimizer
+   over student + fusion, and the CIFAR/ImageNet protocols.
+2. **Device handling fixed (2026-10)**: `helper/loops.py` moved
+   input/target to CUDA only; on machines without CUDA (CPU / Apple MPS)
+   validation crashed with a device mismatch (`Mismatched Tensor types in
+   NNPack convolutionOutput`). All loops now follow the model's device, and
+   `train_student.py` / `train_teacher.py` select cuda/mps/cpu
+   automatically.
+3. **Learning-rate tension — check this first if results are low.** The
+   paper text says lr 0.1 for CIFAR, but Table IX's baseline and KD columns
+   match RepDistiller's published numbers *exactly* (e.g. 73.26/74.92 for
+   WRN-40-2 -> WRN-16-2), and RepDistiller trains students with lr 0.05.
+   The authors most likely ran on RepDistiller with its default lr. If your
+   CKD runs land systematically 1-3 points below Table IX, rerun with
+   `scripts/run_cifar_student_ckd_lr005.sh` (lr 0.05, everything else
+   identical).
+4. **Verify your teacher checkpoint before distilling.** The official
+   RepDistiller wrn_40_2 checkpoint scores 75.61 on CIFAR-100 (verified
+   locally with `scripts/verify_teachers.py`). A teacher below the paper's
+   teacher row propagates directly into the student;
+   `train_student.py` also prints the teacher accuracy at startup.
+
+Remaining paper-unspecified choices (loss weights, KL temperature, fusion
+internals, feature normalization) are documented under "Reproduction
+decisions" and stay overridable via CLI flags.
+
 ## Reproduction decisions (documented inferences)
 
 The paper omits several implementation details. The following defaults are
@@ -168,7 +201,8 @@ documented inferences, all overridable via CLI flags:
 5. **Optimization**: a single SGD optimizer over student + fusion module
    parameters, with the paper's protocol (CIFAR: lr 0.1, 240 epochs,
    /10 at 150/180/210, batch 64; ImageNet: lr 0.2, 90 epochs, /10 every 30,
-   batch 256, wd 1e-4).
+   batch 256, wd 1e-4). Note the lr 0.1 vs 0.05 tension discussed in
+   "Reproduction audit & troubleshooting".
 6. **Exp1 (Appendix A)**: Eq. (10) as printed,
    `alpha_1/2 * ||F^S - F^A||_2` with `F^A = F^T + F^S` (Eq. 9), reduces to
    `alpha_1/2 * ||F^T||_2` — a constant with zero gradient, since

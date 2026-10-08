@@ -208,7 +208,12 @@ def main():
         model_t = load_teacher(opt.path_t, n_cls, model_name=opt.model_t)
     model_s = model_dict[opt.model_s](num_classes=n_cls)
 
-    opt.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    if torch.cuda.is_available():
+        opt.device = 'cuda'
+    elif torch.backends.mps.is_available():
+        opt.device = 'mps'
+    else:
+        opt.device = 'cpu'
     model_t = model_t.to(opt.device)
     model_s = model_s.to(opt.device)
     model_t.eval()
