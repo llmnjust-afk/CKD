@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -29,6 +30,7 @@ class CKDLoss(nn.Module):
         self.gamma = opt.gamma
         self.eta = opt.eta
         self.t2 = opt.kd_t2
+        self.full_grad_kl = getattr(opt, 'full_grad_kl', 0)
 
     def forward(self, logit_t, logit_s, logit_f, target):
         T = self.T
@@ -40,9 +42,14 @@ class CKDLoss(nn.Module):
 
         scale = T * T if self.t2 else 1.0
 
-        kl_tf = F.kl_div(log_p_f, p_t, reduction='batchmean')
-        kl_sf = F.kl_div(log_p_f, p_s, reduction='batchmean')
-        kl_fs = F.kl_div(log_p_s, p_f, reduction='batchmean')
+        if self.full_grad_kl:
+            kl_tf = (p_t * (torch.log(p_t.clamp_min(1e-12)) - log_p_f)).sum(1).mean()
+            kl_sf = (p_s * (log_p_s - log_p_f)).sum(1).mean()
+            kl_fs = (p_f * (log_p_f - log_p_s)).sum(1).mean()
+        else:
+            kl_tf = F.kl_div(log_p_f, p_t, reduction='batchmean')
+            kl_sf = F.kl_div(log_p_f, p_s, reduction='batchmean')
+            kl_fs = F.kl_div(log_p_s, p_f, reduction='batchmean')
 
         ce_f = F.cross_entropy(logit_f, target)
         ce_s = F.cross_entropy(logit_s, target)

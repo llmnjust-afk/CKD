@@ -61,6 +61,8 @@ def parse_option():
     parser.add_argument('--kd_T', type=float, default=4.0)
     parser.add_argument('--kd_t2', type=int, default=1)
     parser.add_argument('--exp1_literal', type=int, default=0)
+    parser.add_argument('--full_grad_kl', type=int, default=0,
+                        help='1: literal autograd of Eqs.6-8 (KLs propagate to every probability incl. the student side); 0: F.kl_div convention (target side detached)')
     parser.add_argument('--fusion_dim', type=str, default='teacher',
                         help="'teacher' | 'student' | explicit integer width")
     parser.add_argument('--fusion_arch', type=str, default='linear',
