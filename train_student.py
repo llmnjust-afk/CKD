@@ -24,7 +24,7 @@ from torchvision import datasets as tv_datasets
 from fuse import FeatureFusionModule
 from helper.loops import validate
 from helper.loops_ckd import train_ckd
-from helper.util import adjust_learning_rate
+from helper.util import adjust_learning_rate, AverageMeter, accuracy
 from distiller_zoo import DistillKL, CKDLoss, Exp1Loss, Exp2Loss
 
 
@@ -63,6 +63,10 @@ def parse_option():
     parser.add_argument('--exp1_literal', type=int, default=0)
     parser.add_argument('--fusion_dim', type=str, default='teacher',
                         help="'teacher' | 'student' | explicit integer width")
+    parser.add_argument('--fusion_arch', type=str, default='linear',
+                        choices=['linear', 'mlp2', 'vggcls'])
+    parser.add_argument('--val_fusion', type=int, default=1,
+                        help='log per-epoch test accuracy of the fusion module (diagnostic)')
 
     parser.add_argument('--subset', type=float, default=1.0)
     parser.add_argument('--trial', type=str, default='1')
@@ -119,6 +123,23 @@ def load_teacher(model_path, n_cls, model_name=None):
     model_t.load_state_dict(state)
     print('=> done')
     return model_t
+
+
+def validate_fusion(val_loader, model_t, model_s, fusion, opt):
+    fusion.eval()
+    model_s.eval()
+    top1 = AverageMeter()
+    with torch.no_grad():
+        for data in val_loader:
+            input, target = data[0], data[1]
+            input = input.float().to(opt.device)
+            target = target.to(opt.device)
+            feat_t, _ = model_t(input, is_feat=True, preact=False)
+            feat_s, _ = model_s(input, is_feat=True, preact=False)
+            _, logit_f = fusion(feat_t[-1], feat_s[-1])
+            acc1 = accuracy(logit_f, target, topk=(1,))[0]
+            top1.update(acc1[0], input.size(0))
+    return top1.avg
 
 
 def get_penult_dim(model, input_shape):
@@ -227,7 +248,8 @@ def main():
         fused_dim = dim_s
     elif opt.fusion_dim not in ['teacher', 'student']:
         fused_dim = int(opt.fusion_dim)
-    fusion = FeatureFusionModule(dim_t, dim_s, n_cls, fused_dim=fused_dim).to(opt.device)
+    fusion = FeatureFusionModule(dim_t, dim_s, n_cls, fused_dim=fused_dim,
+                                 arch=opt.fusion_arch).to(opt.device)
     print('teacher penult dim: %d, student penult dim: %d, fused dim: %d'
           % (dim_t, dim_s, fused_dim))
 
@@ -269,6 +291,10 @@ def main():
 
         test_acc, test_acc_top5, _ = validate(val_loader, model_s, criterion_cls, opt)
 
+        fusion_acc = -1.0
+        if opt.val_fusion and opt.method == 'ckd':
+            fusion_acc = validate_fusion(val_loader, model_t, model_s, fusion, opt)
+
         if test_acc > best_acc:
             best_acc = test_acc
             state = {
@@ -280,8 +306,8 @@ def main():
             }
             torch.save(state, os.path.join(opt.save_folder, '%s_best.pth' % opt.model_s))
 
-        print('epoch %d, test acc %.3f (top5 %.3f), best test acc %.3f'
-              % (epoch, test_acc, test_acc_top5, best_acc))
+        print('epoch %d, student test acc %.3f (top5 %.3f), fusion test acc %.3f, best %.3f'
+              % (epoch, test_acc, test_acc_top5, fusion_acc, best_acc))
         sys.stdout.flush()
 
     print('best accuracy over %d epochs: %.3f' % (opt.epochs, best_acc))

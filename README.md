@@ -109,6 +109,8 @@ Key flags of `train_student.py`:
 | `--kd_T` | 4.0 | temperature `tau` for softmax/KL terms |
 | `--kd_t2` | 1 | scale KL terms by `tau^2` (set 0 to disable) |
 | `--fusion_dim` | `teacher` | fusion hidden width: `teacher` / `student` / integer |
+| `--fusion_arch` | `linear` | fusion head: `linear` / `mlp2` / `vggcls` |
+| `--val_fusion` | 1 | log per-epoch test accuracy of the fusion module (diagnostic: is P^F better than the teacher?) |
 | `--alpha1 --beta` | 1.0 | Exp1 loss weights (Eq. 10) |
 | `--gamma --delta` | 1.0 | Exp2 loss weights (Eq. 12) |
 | `--exp1_literal` | 0 | 0: FitNet-style `||F^S - F^T||_2`; 1: literal printed Eq. 10 |
@@ -143,6 +145,7 @@ ImageNet top-1/top-5 (%) — Table X (ResNet34 → ResNet18): baseline
 The average CIFAR-100 gain reported in the abstract is +3.42% over the
 baseline and +1.71% over classic KD; ImageNet top-1 +2.04%.
 
+<<<<<<< HEAD
 ## Reproduction audit & troubleshooting
 
 Findings from a line-by-line audit against the paper full text plus local
@@ -175,6 +178,29 @@ verification runs:
 Remaining paper-unspecified choices (loss weights, KL temperature, fusion
 internals, feature normalization) are documented under "Reproduction
 decisions" and stay overridable via CLI flags.
+=======
+## Troubleshooting the gap vs. the paper (loss-balance sweep)
+
+First-round reproductions land at classic-KD level (e.g. VGG13 -> VGG8
+~71.9 vs. paper CKD 74.86). With tau^2-scaled KL and unit weights the
+fusion loss is dominated by the teacher-mimicry term, so P^F degenerates
+toward P^T and the student gains collapse to plain-KD level. The paper
+prints the losses WITHOUT tau^2 and never gives numeric weights, so the
+loss balance is the main free variable. `scripts/sweep_ckd_weights.sh`
+sweeps the balance on VGG13 -> VGG8 and re-runs the two best configs on
+WRN-40-2 -> WRN-16-2:
+
+| config | flags | rationale |
+| --- | --- | --- |
+| `t2off` | `--kd_t2 0` | literal printed equations; CE dominates fusion training |
+| `lam10` | `--lam 10` | CE-dominant fusion while keeping the tau^2-scaled student pull |
+| `ab01_g10` | `--alpha 0.1 --beta 0.1 --gamma 10` | fusion trained mainly on labels of joint features; stronger pull to P^F |
+| `t2off_g10` | `--kd_t2 0 --gamma 10` | literal balance + stronger student pull |
+| `mlp2` | `--fusion_arch mlp2` | deeper fusion head (capacity axis) |
+
+Watch `fusion test acc` in the logs: the CKD mechanism requires P^F to
+exceed the teacher for the student to gain beyond KD.
+>>>>>>> 3768baf (Add fusion-arch options, per-epoch fusion test accuracy diagnostic, and loss-balance sweep script)
 
 ## Reproduction decisions (documented inferences)
 
